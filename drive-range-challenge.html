@@ -641,11 +641,11 @@
         <strong id="centerDistanceLabel">-- yd</strong>
       </div>
       <div class="measure-pad" id="measurePad">
-        <button id="readyButton" type="button" disabled>計測開始</button>
+        <button id="readyButton" type="button">センサーを有効にする</button>
       </div>
       <div class="status">
-        <strong id="statusTitle">まず参加者情報を入力</strong>
-        <p id="statusText">周囲を確認してから、スマホをクラブのように軽くスイングします。</p>
+        <strong id="statusTitle">センサーを有効にする</strong>
+        <p id="statusText">中央のボタンを押して準備します。周囲を確認してから軽くスイングしてください。</p>
       </div>
     </div>
 
@@ -662,10 +662,6 @@
       <div class="safety" aria-label="安全確認">
         <span>スマホをしっかり握り、周囲に人や物がない場所で振ってください。</span>
         <span>実際のクラブには取り付けず、レクリエーション用の推定距離として遊んでください。</span>
-      </div>
-      <div class="actions">
-        <button id="sensorButton" type="button">センサーを有効にする</button>
-        <button class="secondary" id="demoButton" type="button">デモスイング</button>
       </div>
     </section>
 
@@ -721,8 +717,6 @@
     measurePad: document.getElementById('measurePad'),
     playerName: document.getElementById('playerName'),
     department: document.getElementById('department'),
-    sensorButton: document.getElementById('sensorButton'),
-    demoButton: document.getElementById('demoButton'),
     distanceLabel: document.getElementById('distanceLabel'),
     speedLabel: document.getElementById('speedLabel'),
     meetLabel: document.getElementById('meetLabel'),
@@ -739,6 +733,7 @@
     sensorReady: false,
     measuring: false,
     started: false,
+    sensorFallback: false,
     shot: 1,
     best: 0,
     last: null,
@@ -761,7 +756,9 @@
   async function enableSensor() {
     try {
       if (!('DeviceMotionEvent' in window)) {
-        setStatus('センサー未対応', 'この端末またはブラウザでは加速度センサーを利用できません。デモスイングで画面確認できます。');
+        state.sensorFallback = true;
+        els.readyButton.textContent = 'デモスイング';
+        setStatus('センサー未対応', 'この端末またはブラウザでは加速度センサーを利用できません。中央ボタンでデモを確認できます。');
         els.sensorLabel.textContent = '未対応';
         return;
       }
@@ -771,6 +768,7 @@
         if (result !== 'granted') {
           setStatus('許可が必要です', 'ブラウザの確認でモーションセンサーを許可してください。');
           els.sensorLabel.textContent = '未許可';
+          els.readyButton.textContent = 'センサーを有効にする';
           return;
         }
       }
@@ -778,15 +776,27 @@
       window.addEventListener('devicemotion', handleMotion);
       state.sensorReady = true;
       els.sensorLabel.textContent = '有効';
-      els.sensorButton.textContent = 'センサー有効';
-      els.sensorButton.disabled = true;
       els.readyButton.disabled = false;
+      els.readyButton.textContent = '計測開始';
       els.measurePad.classList.remove('hidden');
       setStatus('準備完了', '計測開始を押してから、スマホをしっかり握って1回スイングしてください。');
     } catch (error) {
       setStatus('センサーを有効にできません', 'ブラウザ設定や端末の制限で利用できない可能性があります。');
       els.sensorLabel.textContent = 'エラー';
+      els.readyButton.textContent = 'センサーを有効にする';
     }
+  }
+
+  function handlePrimaryAction() {
+    if (state.sensorFallback) {
+      runDemo();
+      return;
+    }
+    if (!state.sensorReady) {
+      enableSensor();
+      return;
+    }
+    startMeasure();
   }
 
   function startMeasure() {
@@ -929,10 +939,10 @@
       }
     }
 
-    els.readyButton.disabled = !state.sensorReady;
+    els.readyButton.disabled = !(state.sensorReady || state.sensorFallback);
     clearTimeout(state.revealTimer);
     state.revealTimer = setTimeout(() => {
-      els.measurePad.classList.toggle('hidden', !state.sensorReady);
+      els.measurePad.classList.toggle('hidden', !(state.sensorReady || state.sensorFallback));
     }, result.distance ? 5000 : 0);
     updateHeader();
   }
@@ -1018,8 +1028,9 @@
     state.last = null;
     state.samples = [];
     clearTimeout(state.revealTimer);
-    els.readyButton.disabled = !state.sensorReady;
-    els.measurePad.classList.toggle('hidden', !state.sensorReady);
+    els.readyButton.disabled = !(state.sensorReady || state.sensorFallback);
+    els.measurePad.classList.remove('hidden');
+    els.readyButton.textContent = state.sensorFallback ? 'デモスイング' : state.sensorReady ? '計測開始' : 'センサーを有効にする';
     updateHeader();
     updateResultUi({ distance: 0, speed: 0, meet: 0, follow: 0, comment: '3球のベスト飛距離を端末内ランキングへ保存します。' });
     hideDistanceBurst();
@@ -1087,7 +1098,7 @@
     cancelAnimationFrame(state.distanceAnimation);
     clearTimeout(state.revealTimer);
     els.distanceBurst.classList.remove('show');
-    els.measurePad.classList.toggle('hidden', !state.sensorReady);
+    els.measurePad.classList.remove('hidden');
     els.centerDistanceLabel.textContent = '-- yd';
   }
 
@@ -1129,9 +1140,7 @@
     return Math.max(min, Math.min(max, value));
   }
 
-  els.sensorButton.addEventListener('click', enableSensor);
-  els.readyButton.addEventListener('click', startMeasure);
-  els.demoButton.addEventListener('click', runDemo);
+  els.readyButton.addEventListener('click', handlePrimaryAction);
   els.resetButton.addEventListener('click', resetChallenge);
   els.playTab.addEventListener('click', () => showScreen('play'));
   els.rankTab.addEventListener('click', () => showScreen('rank'));
