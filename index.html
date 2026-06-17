@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nice Putt Challenge</title>
+<style>
+  :root {
+    --ink: #163226;
+    --muted: #5a7868;
+    --green: #147a45;
+    --green-2: #2da966;
+    --lime: #cbe86b;
+    --sand: #ead17d;
+    --water: #4ba9d8;
+    --paper: #f6f4e9;
+    --line: rgba(22, 50, 38, .16);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    background: #dcead3;
+    color: var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  body {
+    display: flex;
+    justify-content: center;
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+
+  .app {
+    width: min(100%, 440px);
+    height: calc(100dvh - max(12px, env(safe-area-inset-top)) - max(12px, env(safe-area-inset-bottom)));
+    min-height: 620px;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 10px;
+  }
+
+  header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 10px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(22px, 7vw, 34px);
+    line-height: .96;
+    letter-spacing: 0;
+    font-weight: 850;
+  }
+
+  .eyebrow {
+    display: block;
+    margin-bottom: 3px;
+    font-size: 12px;
+    line-height: 1.1;
+    color: var(--muted);
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .score-card {
+    min-width: 116px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: rgba(246, 244, 233, .68);
+  }
+
+  .score-card .label {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 800;
+  }
+
+  .score-card .value {
+    display: block;
+    margin-top: 1px;
+    font-size: 24px;
+    line-height: 1;
+    font-weight: 850;
+  }
+
+  .course {
+    position: relative;
+    min-height: 0;
+    border: 1px solid rgba(22, 50, 38, .2);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #4ba163;
+    box-shadow: 0 14px 38px rgba(34, 77, 49, .22);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+  }
+
+  .top-bar {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    top: 10px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    pointer-events: none;
+  }
+
+  .pill {
+    min-width: 0;
+    padding: 7px 8px;
+    border: 1px solid rgba(255,255,255,.32);
+    border-radius: 8px;
+    background: rgba(246, 244, 233, .82);
+    color: var(--ink);
+    box-shadow: 0 8px 18px rgba(12, 57, 34, .12);
+  }
+
+  .pill span {
+    display: block;
+    font-size: 10px;
+    line-height: 1;
+    color: var(--muted);
+    font-weight: 850;
+  }
+
+  .pill strong {
+    display: block;
+    margin-top: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  .message {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 50px;
+    padding: 9px 10px 9px 12px;
+    border: 1px solid rgba(255,255,255,.42);
+    border-radius: 8px;
+    background: rgba(246, 244, 233, .9);
+    box-shadow: 0 12px 26px rgba(12, 57, 34, .18);
+  }
+
+  .message.compact {
+    left: 50%;
+    right: auto;
+    bottom: 10px;
+    min-height: 0;
+    width: min(76%, 300px);
+    padding: 6px 8px;
+    transform: translateX(-50%);
+    pointer-events: none;
+    opacity: .72;
+  }
+
+  .message.compact p {
+    width: 100%;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+  }
+
+  .message.compact button {
+    display: none;
+  }
+
+  .message p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.3;
+    font-weight: 750;
+  }
+
+  button {
+    appearance: none;
+    border: 0;
+    border-radius: 8px;
+    background: var(--ink);
+    color: white;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 850;
+    min-height: 38px;
+    padding: 0 13px;
+    cursor: pointer;
+  }
+
+  button:active { transform: translateY(1px); }
+
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 9px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: rgba(246, 244, 233, .7);
+  }
+
+  .hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.35;
+    font-weight: 700;
+  }
+
+  .reset {
+    background: #ffffff;
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+
+  @media (max-height: 700px) {
+    body { overflow: auto; }
+    .app { min-height: 590px; }
+    h1 { font-size: 23px; }
+    .score-card .value { font-size: 21px; }
+  }
+
+  @media (max-width: 360px) {
+    .app { min-height: 590px; }
+    .score-card { min-width: 96px; }
+    .pill { padding-inline: 6px; }
+    .pill strong { font-size: 13px; }
+    .message { align-items: stretch; flex-direction: column; }
+    .message.compact { align-items: center; flex-direction: row; }
+    .message button { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <header>
+    <h1><span class="eyebrow">Office Golf App Prototype</span>Nice Putt Challenge</h1>
+    <div class="score-card">
+      <span class="label">TOTAL</span>
+      <strong class="value" id="totalScore">0</strong>
+    </div>
+  </header>
+
+  <section class="course" aria-label="パターゲーム">
+    <canvas id="game" width="720" height="1080"></canvas>
+    <div class="top-bar">
+      <div class="pill"><span>HOLE</span><strong id="holeLabel">1 / 3</strong></div>
+      <div class="pill"><span>STROKE</span><strong id="strokeLabel">0</strong></div>
+      <div class="pill"><span>PAR</span><strong id="parLabel">2</strong></div>
+    </div>
+    <div class="message">
+      <p id="messageText">ボールの近くから、打ちたい方向へ指を滑らせてショット。</p>
+      <button id="nextButton" type="button">開始</button>
+    </div>
+  </section>
+
+  <footer class="controls">
+    <p class="hint">スマホではドラッグ、PCではマウス操作。3ホールの合計打数で競えます。</p>
+    <button class="reset" id="resetButton" type="button">リセット</button>
+  </footer>
+</main>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const totalScoreEl = document.getElementById('totalScore');
+  const holeLabel = document.getElementById('holeLabel');
+  const strokeLabel = document.getElementById('strokeLabel');
+  const parLabel = document.getElementById('parLabel');
+  const messageText = document.getElementById('messageText');
+  const messageBox = document.querySelector('.message');
+  const nextButton = document.getElementById('nextButton');
+  const resetButton = document.getElementById('resetButton');
+
+  const holes = [
+    {
+      par: 2,
+      tee: { x: .50, y: .86 },
+      cup: { x: .50, y: .16 },
+      slope: { x: .00004, y: 0 },
+      bumps: [
+        { x: .36, y: .34, r: .14, strength: .000012 },
+        { x: .62, y: .52, r: .12, strength: -.000010 },
+        { x: .46, y: .70, r: .11, strength: .000009 }
+      ],
+      sand: [{ x: .24, y: .43, r: .09 }, { x: .74, y: .62, r: .08 }],
+      water: [],
+      trees: [{ x: .22, y: .22 }, { x: .80, y: .34 }, { x: .17, y: .70 }]
+    },
+    {
+      par: 3,
+      tee: { x: .28, y: .86 },
+      cup: { x: .74, y: .18 },
+      slope: { x: -.00005, y: 0 },
+      bumps: [
+        { x: .45, y: .30, r: .13, strength: .000010 },
+        { x: .66, y: .48, r: .11, strength: -.000012 },
+        { x: .35, y: .68, r: .14, strength: .000009 },
+        { x: .78, y: .75, r: .10, strength: -.000008 }
+      ],
+      sand: [{ x: .56, y: .38, r: .11 }, { x: .30, y: .55, r: .075 }],
+      water: [{ x: .78, y: .56, rx: .16, ry: .08 }],
+      trees: [{ x: .18, y: .27 }, { x: .86, y: .30 }, { x: .13, y: .63 }]
+    },
+    {
+      par: 3,
+      tee: { x: .68, y: .88 },
+      cup: { x: .32, y: .15 },
+      slope: { x: .00005, y: 0 },
+      bumps: [
+        { x: .32, y: .31, r: .13, strength: -.000010 },
+        { x: .54, y: .44, r: .15, strength: .000012 },
+        { x: .69, y: .62, r: .11, strength: -.000008 },
+        { x: .45, y: .78, r: .12, strength: .000009 }
+      ],
+      sand: [{ x: .38, y: .43, r: .1 }, { x: .72, y: .29, r: .07 }],
+      water: [{ x: .34, y: .67, rx: .19, ry: .075 }],
+      trees: [{ x: .15, y: .33 }, { x: .84, y: .49 }, { x: .75, y: .73 }]
+    }
+  ];
+
+  const state = {
+    hole: 0,
+    strokes: 0,
+    total: 0,
+    status: 'ready',
+    lastTime: 0,
+    swinging: false,
+    swingStart: null,
+    swingNow: null,
+    swingTrail: [],
+    ball: { x: 0, y: 0, vx: 0, vy: 0, r: 13 },
+    particles: []
+  };
+
+  const size = {
+    w: canvas.width,
+    h: canvas.height,
+    scaleX: 1,
+    scaleY: 1
+  };
+
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+    size.w = canvas.width;
+    size.h = canvas.height;
+    size.scaleX = canvas.width / rect.width;
+    size.scaleY = canvas.height / rect.height;
+    state.ball.r = Math.max(15, Math.min(22, size.w * .034));
+    if (state.status === 'ready' || state.status === 'done') placeBall();
+  }
+
+  function hole() {
+    return holes[state.hole];
+  }
+
+  function point(p) {
+    return { x: p.x * size.w, y: p.y * size.h };
+  }
+
+  function placeBall() {
+    const tee = point(hole().tee);
+    state.ball.x = tee.x;
+    state.ball.y = tee.y;
+    state.ball.vx = 0;
+    state.ball.vy = 0;
+  }
+
+  function resetGame() {
+    state.hole = 0;
+    state.strokes = 0;
+    state.total = 0;
+    state.status = 'ready';
+    state.particles = [];
+    placeBall();
+    setMessage('ボールの近くから、打ちたい方向へ指を滑らせてショット。', '開始');
+    updateUi();
+  }
+
+  function nextHole() {
+    if (state.status === 'complete') {
+      resetGame();
+      return;
+    }
+    if (state.status === 'holed') {
+      state.hole += 1;
+      state.strokes = 0;
+      state.status = 'aim';
+      placeBall();
+      setMessage('次のホール。ラインを読んで狙ってください。', 'OK');
+      updateUi();
+      return;
+    }
+    state.status = 'aim';
+    setMessage('ボールの近くから、打ちたい方向へ指を滑らせてショット。', 'OK');
+    updateUi();
+  }
+
+  function setMessage(text, buttonText) {
+    messageText.textContent = text;
+    nextButton.textContent = buttonText;
+    const compact = state.status === 'aim' && buttonText === 'OK';
+    messageBox.classList.toggle('compact', compact);
+  }
+
+  function updateUi() {
+    totalScoreEl.textContent = String(state.total);
+    holeLabel.textContent = `${Math.min(state.hole + 1, holes.length)} / ${holes.length}`;
+    strokeLabel.textContent = String(state.strokes);
+    parLabel.textContent = String(hole().par);
+  }
+
+  function getPointer(e) {
+    const rect = canvas.getBoundingClientRect();
+    const p = e.touches ? e.touches[0] : e;
+    return {
+      x: (p.clientX - rect.left) * size.scaleX,
+      y: (p.clientY - rect.top) * size.scaleY
+    };
+  }
+
+  function canShoot() {
+    return state.status === 'aim' && Math.hypot(state.ball.vx, state.ball.vy) < .5;
+  }
+
+  function pointerDown(e) {
+    if (!canShoot()) return;
+    const p = getPointer(e);
+    if (distance(p, state.ball) > state.ball.r * 4.8) return;
+    e.preventDefault();
+    state.swinging = true;
+    state.swingStart = p;
+    state.swingNow = p;
+    state.swingTrail = [p];
+  }
+
+  function pointerMove(e) {
+    if (!state.swinging) return;
+    e.preventDefault();
+    state.swingNow = getPointer(e);
+    state.swingTrail.push(state.swingNow);
+    if (state.swingTrail.length > 8) state.swingTrail.shift();
+  }
+
+  function pointerUp(e) {
+    if (!state.swinging) return;
+    e.preventDefault();
+    const p = state.swingNow || getPointer(e);
+    const dx = p.x - state.swingStart.x;
+    const dy = p.y - state.swingStart.y;
+    const rawSwing = Math.hypot(dx, dy);
+    const minSwing = Math.max(28, size.w * .05);
+    const maxSwing = size.w * .34;
+    const swing = Math.min(rawSwing, maxSwing);
+    if (swing > minSwing) {
+      const angle = Math.atan2(dy, dx);
+      const t = Math.min(1, (swing - minSwing) / (maxSwing - minSwing));
+      const softened = t * t * (3 - 2 * t);
+      const speed = .45 + softened * 3.35;
+      state.ball.vx = Math.cos(angle) * speed;
+      state.ball.vy = Math.sin(angle) * speed;
+      state.strokes += 1;
+      setMessage('転がりを見守り中...', 'OK');
+      updateUi();
+    }
+    state.swinging = false;
+    state.swingStart = null;
+    state.swingNow = null;
+    state.swingTrail = [];
+  }
+
+  function step(dt) {
+    const b = state.ball;
+    if (state.status !== 'aim' && state.status !== 'holed') return;
+    if (Math.hypot(b.vx, b.vy) < .02) {
+      b.vx = 0;
+      b.vy = 0;
+      if (state.status === 'aim' && state.strokes > 0) setMessage('もう一打。カップの少し手前を狙うのもアリです。', 'OK');
+      return;
+    }
+
+    const h = hole();
+    applyTerrainForce(b, dt);
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+
+    const friction = surfaceFriction(b);
+    b.vx *= Math.pow(friction, dt / 16.67);
+    b.vy *= Math.pow(friction, dt / 16.67);
+
+    const pad = b.r + size.w * .035;
+    if (b.x < pad || b.x > size.w - pad) {
+      b.x = Math.max(pad, Math.min(size.w - pad, b.x));
+      b.vx *= -.48;
+    }
+    if (b.y < pad || b.y > size.h - pad) {
+      b.y = Math.max(pad, Math.min(size.h - pad, b.y));
+      b.vy *= -.32;
+      if (b.y > size.h - pad) b.vx *= .74;
+    }
+
+    for (const water of h.water) {
+      const c = { x: water.x * size.w, y: water.y * size.h };
+      const rx = water.rx * size.w;
+      const ry = water.ry * size.h;
+      if (((b.x - c.x) ** 2) / (rx ** 2) + ((b.y - c.y) ** 2) / (ry ** 2) < 1) {
+        state.strokes += 1;
+        placeBall();
+        setMessage('池に入りました。1打ペナルティで打ち直し。', 'OK');
+        updateUi();
+        return;
+      }
+    }
+
+    const cup = point(h.cup);
+    const cupR = Math.max(23, size.w * .052);
+    const speed = Math.hypot(b.vx, b.vy);
+    if (distance(b, cup) < cupR && speed < 1.25) {
+      b.x = cup.x;
+      b.y = cup.y;
+      b.vx = 0;
+      b.vy = 0;
+      state.status = 'holed';
+      state.total += state.strokes;
+      burst(cup.x, cup.y);
+      if (state.hole === holes.length - 1) {
+        state.status = 'complete';
+        const par = holes.reduce((sum, item) => sum + item.par, 0);
+        const diff = state.total - par;
+        const result = diff <= 0 ? 'ナイスラウンド！' : diff <= 3 ? 'いい感じです。' : '次は更新を狙いましょう。';
+        setMessage(`完走です。合計${state.total}打、${result}`, 'もう一度');
+      } else {
+        const label = state.strokes <= h.par ? 'Nice Putt!' : 'カップイン！';
+        setMessage(`${label} このホールは${state.strokes}打でした。`, '次へ');
+      }
+      updateUi();
+    }
+  }
+
+  function surfaceFriction(b) {
+    let friction = .986;
+    for (const sand of hole().sand) {
+      const c = { x: sand.x * size.w, y: sand.y * size.h };
+      if (distance(b, c) < sand.r * size.w) friction = .93;
+    }
+    return friction;
+  }
+
+  function applyTerrainForce(b, dt) {
+    const h = hole();
+    const speed = Math.hypot(b.vx, b.vy);
+    if (speed > .08) {
+      b.vx += h.slope.x * dt;
+      b.vy += h.slope.y * dt;
+    }
+    for (const bump of h.bumps) {
+      const c = { x: bump.x * size.w, y: bump.y * size.h };
+      const radius = bump.r * size.w;
+      const dx = b.x - c.x;
+      const dy = b.y - c.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 1 && dist < radius) {
+        const falloff = 1 - dist / radius;
+        const lowSpeedFade = Math.min(1, speed / 2.4);
+        const speedDamp = Math.max(.18, 1 - Math.min(speed, 8) / 10);
+        const force = bump.strength * falloff * lowSpeedFade * speedDamp * (dt / 16.67);
+        b.vx += (dx / dist) * force * size.w;
+        b.vy += (dy / dist) * force * size.w;
+      }
+    }
+  }
+
+  function burst(x, y) {
+    for (let i = 0; i < 26; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = 1.5 + Math.random() * 3.8;
+      state.particles.push({
+        x, y,
+        vx: Math.cos(a) * s,
+        vy: Math.sin(a) * s,
+        life: 540 + Math.random() * 260,
+        age: 0
+      });
+    }
+  }
+
+  function updateParticles(dt) {
+    for (const p of state.particles) {
+      p.age += dt;
+      p.x += p.vx * dt / 16.67;
+      p.y += p.vy * dt / 16.67;
+      p.vy += .035 * dt / 16.67;
+    }
+    state.particles = state.particles.filter(p => p.age < p.life);
+  }
+
+  function draw() {
+    const w = size.w;
+    const h = size.h;
+    const grd = ctx.createLinearGradient(0, 0, 0, h);
+    grd.addColorStop(0, '#67bd76');
+    grd.addColorStop(.55, '#4ba565');
+    grd.addColorStop(1, '#348e55');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, w, h);
+
+    drawFairway(w, h);
+    drawSlopeLines(w, h);
+    drawBumps(w, h);
+    drawHazards(w, h);
+    drawCup();
+    drawBall();
+    drawAim();
+    drawParticles();
+  }
+
+  function drawFairway(w, h) {
+    ctx.save();
+    ctx.globalAlpha = .18;
+    for (let y = -h; y < h * 2; y += 56 * size.scaleY) {
+      ctx.fillStyle = '#f0f5d4';
+      ctx.beginPath();
+      ctx.ellipse(w * .5, y, w * .62, h * .095, -.08, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,.2)';
+    ctx.lineWidth = Math.max(1, w * .004);
+    ctx.setLineDash([w * .035, w * .035]);
+    ctx.beginPath();
+    ctx.moveTo(w * .18, h * .95);
+    ctx.bezierCurveTo(w * .34, h * .62, w * .65, h * .45, w * .82, h * .05);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawSlopeLines(w, h) {
+    const slope = hole().slope;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(22,50,38,.16)';
+    ctx.lineWidth = Math.max(1, w * .003);
+    for (let y = h * .18; y < h * .86; y += h * .105) {
+      ctx.beginPath();
+      ctx.moveTo(w * .16, y);
+      ctx.quadraticCurveTo(w * (.5 + slope.x * 700), y + slope.y * 18000, w * .84, y - slope.x * 22000);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawBumps(w, h) {
+    ctx.save();
+    for (const bump of hole().bumps) {
+      const x = bump.x * w;
+      const y = bump.y * h;
+      const r = bump.r * w;
+      const isMound = bump.strength > 0;
+      const g = ctx.createRadialGradient(x - r * .28, y - r * .32, r * .08, x, y, r);
+      if (isMound) {
+        g.addColorStop(0, 'rgba(224,244,152,.45)');
+        g.addColorStop(.58, 'rgba(82,151,77,.18)');
+        g.addColorStop(1, 'rgba(25,85,50,0)');
+      } else {
+        g.addColorStop(0, 'rgba(24,75,49,.34)');
+        g.addColorStop(.62, 'rgba(34,105,61,.16)');
+        g.addColorStop(1, 'rgba(25,85,50,0)');
+      }
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(x, y, r * 1.16, r * .72, -.22, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = isMound ? 'rgba(230,248,166,.28)' : 'rgba(16,60,38,.24)';
+      ctx.lineWidth = Math.max(1, w * .003);
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.ellipse(x, y, r * (.48 + i * .2), r * (.28 + i * .12), -.22, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawHazards(w, h) {
+    for (const water of hole().water) {
+      const c = { x: water.x * w, y: water.y * h };
+      ctx.fillStyle = 'rgba(75,169,216,.92)';
+      ctx.beginPath();
+      ctx.ellipse(c.x, c.y, water.rx * w, water.ry * h, -.08, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.42)';
+      ctx.lineWidth = Math.max(2, w * .006);
+      ctx.stroke();
+    }
+
+    for (const sand of hole().sand) {
+      const c = { x: sand.x * w, y: sand.y * h };
+      ctx.fillStyle = '#ead17d';
+      ctx.beginPath();
+      ctx.ellipse(c.x, c.y, sand.r * w * 1.15, sand.r * w * .72, .3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(97,76,32,.18)';
+      ctx.lineWidth = Math.max(2, w * .005);
+      ctx.stroke();
+    }
+
+    for (const tree of hole().trees) {
+      const x = tree.x * w;
+      const y = tree.y * h;
+      ctx.fillStyle = 'rgba(17,89,50,.86)';
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(15, w * .037), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(9,56,33,.32)';
+      ctx.beginPath();
+      ctx.arc(x + w * .012, y + w * .01, Math.max(9, w * .022), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawCup() {
+    const cup = point(hole().cup);
+    const flagH = size.h * .08;
+    const cupR = Math.max(22, size.w * .05);
+    ctx.strokeStyle = '#f7f7ee';
+    ctx.lineWidth = Math.max(3, size.w * .006);
+    ctx.beginPath();
+    ctx.moveTo(cup.x, cup.y);
+    ctx.lineTo(cup.x, cup.y - flagH);
+    ctx.stroke();
+    ctx.fillStyle = '#d83a3a';
+    ctx.beginPath();
+    ctx.moveTo(cup.x, cup.y - flagH);
+    ctx.lineTo(cup.x + size.w * .07, cup.y - flagH + size.h * .018);
+    ctx.lineTo(cup.x, cup.y - flagH + size.h * .036);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#14251d';
+    ctx.beginPath();
+    ctx.ellipse(cup.x, cup.y, cupR, cupR * .72, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawBall() {
+    const b = state.ball;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    ctx.beginPath();
+    ctx.ellipse(b.x + b.r * .3, b.y + b.r * .48, b.r * 1.05, b.r * .5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const g = ctx.createRadialGradient(b.x - b.r * .35, b.y - b.r * .45, b.r * .15, b.x, b.y, b.r * 1.2);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(.62, '#f4f4ef');
+    g.addColorStop(1, '#d8d8d0');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawAim() {
+    if (!state.swinging || !state.swingNow) return;
+    const start = state.swingStart;
+    const dx = state.swingNow.x - start.x;
+    const dy = state.swingNow.y - start.y;
+    const len = Math.min(Math.hypot(dx, dy), size.w * .24);
+    const angle = Math.atan2(dy, dx);
+    const end = {
+      x: state.ball.x + Math.cos(angle) * len * 1.05,
+      y: state.ball.y + Math.sin(angle) * len * 1.05
+    };
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,.84)';
+    ctx.lineWidth = Math.max(5, size.w * .011);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(state.ball.x, state.ball.y);
+    ctx.lineTo(end.x, end.y);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(22,50,38,.42)';
+    ctx.lineWidth = Math.max(2, size.w * .004);
+    ctx.beginPath();
+    for (let i = 0; i < state.swingTrail.length; i++) {
+      const p = state.swingTrail[i];
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawParticles() {
+    ctx.save();
+    for (const p of state.particles) {
+      const alpha = 1 - p.age / p.life;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#fff3a0';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(2, size.w * .007), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function distance(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
+  function frame(now) {
+    if (!state.lastTime) state.lastTime = now;
+    const dt = Math.min(32, now - state.lastTime);
+    state.lastTime = now;
+    step(dt);
+    updateParticles(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  window.addEventListener('resize', resizeCanvas);
+  canvas.addEventListener('pointerdown', pointerDown, { passive: false });
+  canvas.addEventListener('pointermove', pointerMove, { passive: false });
+  canvas.addEventListener('pointerup', pointerUp, { passive: false });
+  canvas.addEventListener('pointercancel', pointerUp, { passive: false });
+  nextButton.addEventListener('click', nextHole);
+  resetButton.addEventListener('click', resetGame);
+
+  resizeCanvas();
+  resetGame();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
