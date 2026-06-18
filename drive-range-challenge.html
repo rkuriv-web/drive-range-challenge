@@ -194,7 +194,7 @@
   }
 
   .ball-flight.fly {
-    animation: fly 5000ms cubic-bezier(.12,.72,.18,1) forwards;
+    animation: fly 2200ms cubic-bezier(.08,.78,.18,1) forwards;
   }
 
   .flight-trail {
@@ -212,7 +212,7 @@
   }
 
   .flight-trail.fly {
-    animation: trail 5000ms ease-out forwards;
+    animation: trail 2200ms ease-out forwards;
   }
 
   .landing-mark {
@@ -229,7 +229,7 @@
   }
 
   .landing-mark.fly {
-    animation: land 5000ms ease-out forwards;
+    animation: land 2200ms ease-out forwards;
   }
 
   .distance-burst {
@@ -251,7 +251,7 @@
   }
 
   .distance-burst.show {
-    animation: burstIn 5000ms cubic-bezier(.18,.78,.22,1) forwards;
+    animation: burstIn 2300ms cubic-bezier(.18,.78,.22,1) forwards;
   }
 
   .distance-burst span {
@@ -273,26 +273,29 @@
   }
 
   @keyframes burstIn {
-    0% { opacity: 0; transform: translate(-50%, -50%) scale(.76); }
-    16% { opacity: 1; transform: translate(-50%, -50%) scale(1.03); }
-    78% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    0%, 34% { opacity: 0; transform: translate(-50%, -50%) scale(.78); }
+    48% { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+    82% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
     100% { opacity: .96; transform: translate(-50%, -50%) scale(1); }
   }
 
   @keyframes fly {
     0% { transform: translate(-50%, 0) scale(1.2); opacity: 1; }
-    48% { transform: translate(calc(-50% + var(--drift, 0px)), calc(var(--height, -210px))) scale(.82); opacity: 1; }
+    18% { transform: translate(calc(-50% + var(--burst-drift, 0px)), calc(var(--burst-height, -190px))) scale(.95); opacity: 1; }
+    62% { transform: translate(calc(-50% + var(--drift, 0px)), calc(var(--apex, -330px))) scale(.68); opacity: 1; }
     100% { transform: translate(calc(-50% + var(--drift, 0px)), calc(var(--landing, -310px))) scale(.42); opacity: .92; }
   }
 
   @keyframes trail {
     0% { height: 0; opacity: 0; }
-    20% { opacity: .88; }
+    12% { opacity: .9; }
+    70% { opacity: .48; }
     100% { height: var(--trail-height, 260px); opacity: 0; }
   }
 
   @keyframes land {
-    0%, 84% { opacity: 0; transform: translate(calc(-50% + var(--drift, 0px)), var(--landing, -310px)) scale(.35); }
+    0%, 68% { opacity: 0; transform: translate(calc(-50% + var(--drift, 0px)), var(--landing, -310px)) scale(.35); }
+    82% { opacity: .96; transform: translate(calc(-50% + var(--drift, 0px)), var(--landing, -310px)) scale(1.22); }
     100% { opacity: .9; transform: translate(calc(-50% + var(--drift, 0px)), var(--landing, -310px)) scale(1); }
   }
 
@@ -943,7 +946,7 @@
     clearTimeout(state.revealTimer);
     state.revealTimer = setTimeout(() => {
       els.measurePad.classList.toggle('hidden', !(state.sensorReady || state.sensorFallback));
-    }, result.distance ? 5000 : 0);
+    }, result.distance ? 3200 : 0);
     updateHeader();
   }
 
@@ -1056,11 +1059,18 @@
     els.landingMark.classList.remove('fly');
     void els.ballFlight.offsetWidth;
     const normalized = clamp((distance - 55) / 230, 0, 1);
-    const drift = ((meet - 78) * 2.15).toFixed(0);
+    const miss = clamp(100 - meet, 0, 58);
+    const side = Math.sin(distance * 12.9898 + meet * 78.233);
+    const drift = Math.round(side * (12 + miss * 1.05));
     const landing = -145 - normalized * 305;
+    const apex = landing - 34 - normalized * 36;
+    const burstHeight = -90 - normalized * 145;
+    const burstDrift = Math.round(drift * .38);
     const trailHeight = 150 + normalized * 230;
-    const trailRotate = Number(drift) * .07;
-    els.ballFlight.style.setProperty('--height', `${-140 - normalized * 210}px`);
+    const trailRotate = drift * .05;
+    els.ballFlight.style.setProperty('--burst-height', `${burstHeight}px`);
+    els.ballFlight.style.setProperty('--burst-drift', `${burstDrift}px`);
+    els.ballFlight.style.setProperty('--apex', `${apex}px`);
     els.ballFlight.style.setProperty('--landing', `${landing}px`);
     els.ballFlight.style.setProperty('--drift', `${drift}px`);
     els.flightTrail.style.setProperty('--trail-height', `${trailHeight}px`);
@@ -1079,10 +1089,13 @@
     void els.distanceBurst.offsetWidth;
     els.distanceBurst.classList.add('show');
     const start = performance.now();
-    const duration = 5000;
+    const normalized = clamp((target - 55) / 230, 0, 1);
+    const duration = 900 + normalized * 700;
+    const delay = 900;
     const from = 0;
     function tick(now) {
-      const progress = clamp((now - start) / duration, 0, 1);
+      const elapsed = now - start - delay;
+      const progress = clamp(elapsed / duration, 0, 1);
       const eased = 1 - (1 - progress) ** 3;
       const text = `${Math.round(from + (target - from) * eased)} yd`;
       els.distanceLabel.textContent = text;
